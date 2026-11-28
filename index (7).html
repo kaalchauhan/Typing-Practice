@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Typing Practice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      background-color: #FDFBF7;
+      color: #1C1917;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .legal-serif {
+      font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    }
+    .word-wrong {
+      background-color: #FEE2E2;
+      color: #991B1B;
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+    .char-wrong {
+      color: #DC2626;
+      text-decoration: underline;
+      text-decoration-color: #DC2626;
+      font-weight: 600;
+    }
+    .char-right {
+      color: #1C1917;
+    }
+    .passage-level[aria-pressed="true"] {
+      background: #3d4937;
+      color: #fff;
+    }
+    #passageLibrary {
+      position: absolute;
+      top: 100%;
+      left: .5rem;
+      right: .5rem;
+      max-width: 110rem;
+      margin: .25rem auto 0;
+    }
+    #passageLibrary[hidden] { display: none; }
+    .passage-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: .4rem 1rem;
+    }
+    @media (max-width: 375px) {
+      .passage-controls { column-gap: .4rem; }
+      .passage-level { padding-inline: .4rem; }
+    }
+  </style>
+</head>
+<body class="min-h-screen md:h-[100dvh] flex flex-col">
+  <!-- Slim Non-Sticky Header -->
+  <header class="w-full shrink-0 border-b border-stone-200 bg-[#FDFBF7] py-1.5 px-2 sm:px-3 relative z-40">
+    <div class="max-w-[110rem] mx-auto flex items-center justify-between gap-2 text-xs text-stone-600">
+      <div class="flex items-center gap-2 font-medium text-stone-800">
+        <span>Typing Practice</span>
+      </div>
+      <div class="flex items-center flex-wrap gap-2">
+        <button id="togglePassageSearchBtn" type="button" aria-expanded="false" aria-controls="passageLibrary" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Search
+        </button>
+        <button id="toggleCustomBtn" type="button" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Custom Text
+        </button>
+        <button id="copyRefBtn" type="button" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Copy Paragraph
+        </button>
+        <div class="flex items-center border border-stone-300 rounded bg-white">
+          <button id="fontDecBtn" type="button" class="px-2 py-1 hover:bg-stone-100 text-stone-700 font-semibold" title="Decrease font size">-</button>
+          <span id="fontSizeLabel" class="px-2 py-1 text-stone-600 border-x border-stone-300 select-none">18px</span>
+          <button id="fontIncBtn" type="button" class="px-2 py-1 hover:bg-stone-100 text-stone-700 font-semibold" title="Increase font size">+</button>
+        </div>
+        <button id="openProgressBtn" type="button" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Progress Graph
+        </button>
+        <button id="fullscreenBtn" type="button" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Full Screen
+        </button>
+        <button id="backspaceBtn" type="button" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Disable Backspace
+        </button>
+        <button id="customTimeBtn" type="button" aria-haspopup="dialog" class="px-2.5 py-1 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium transition">
+          Custom Time
+        </button>
+        <span id="sessionTimer" role="timer" hidden class="px-2 py-1 rounded bg-stone-100 text-stone-700 font-medium tabular-nums whitespace-nowrap"></span>
+        <button id="endSessionBtn" type="button" class="px-2.5 py-1 rounded bg-stone-800 hover:bg-stone-900 text-white font-medium transition">
+          End Session
+        </button>
+      </div>
+    </div>
+    <!-- Search panel: floats under the top bar, takes no layout space -->
+    <section id="passageLibrary" aria-labelledby="passageLibraryTitle" hidden class="rounded-lg border border-stone-300 bg-[#F5F3EB] px-3 py-2 shadow-lg">
+      <div class="passage-controls">
+        <div>
+          <h2 id="passageLibraryTitle" class="sr-only">Online Passages</h2>
+          <div role="group" aria-label="Passage difficulty" aria-describedby="passageDifficultyHint" class="inline-flex rounded-md border border-stone-300 bg-white p-0.5 text-xs font-medium text-stone-700">
+            <button type="button" data-passage-level="easy" aria-pressed="false" title="Uppercase and lowercase letters, commas, and periods only." class="passage-level rounded px-2.5 py-1.5 hover:bg-stone-100">Easy</button>
+            <button type="button" data-passage-level="moderate" aria-pressed="true" title="Occasional numbers and double quotation marks." class="passage-level rounded px-2.5 py-1.5 hover:bg-stone-100">Moderate</button>
+            <button type="button" data-passage-level="hard" aria-pressed="false" title="Numbers and double quotation marks appear more often." class="passage-level rounded px-2.5 py-1.5 hover:bg-stone-100">Hard</button>
+          </div>
+        </div>
+        <div class="flex gap-1.5">
+          <button id="newPassageBtn" type="button" class="whitespace-nowrap rounded-md border border-stone-300 bg-white px-2.5 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-100">New Passage</button>
+        </div>
+      </div>
+        <form id="passageSearchForm" role="search" aria-label="Practice passages" class="mt-2 min-w-0">
+          <label for="passageQuery" class="sr-only">Search passages by topic</label>
+          <div class="flex gap-1.5">
+            <input id="passageQuery" type="search" maxlength="100" placeholder="e.g. solar system" class="min-w-0 flex-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#53644A]">
+            <button type="submit" class="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-700">Search</button>
+          </div>
+        </form>
+      <p id="passageDifficultyHint" class="sr-only"></p>
+      <p id="passageStatus" role="status" aria-atomic="true" class="mt-1 truncate text-xs text-stone-600 empty:hidden"></p>
+    </section>
+  </header>
+
+  <!-- Main Workspace (Split view so both reference and typing box remain visible together) -->
+  <main id="workspaceContainer" class="flex-1 min-h-0 max-w-[110rem] w-full mx-auto px-2 sm:px-3 py-2 flex flex-col gap-2">
+    <!-- Custom / Outside Paragraph Panel -->
+    <section id="customTextPanel" class="hidden shrink-0 bg-white border border-stone-300 rounded-lg p-3 shadow-sm">
+      <div class="flex items-center justify-between mb-1.5">
+        <label for="customTextInput" class="text-xs font-semibold uppercase tracking-wider text-stone-600">
+          Paste or Type Outside Paragraph
+        </label>
+        <button id="resetDefaultBtn" type="button" class="text-xs text-stone-600 underline hover:text-stone-900">
+          Restore Online Passage
+        </button>
+      </div>
+      <textarea
+        id="customTextInput"
+        rows="3"
+        placeholder="Paste any paragraph here to practice typing..."
+        class="w-full p-2 text-sm border border-stone-300 rounded focus:outline-none focus:ring-2 focus:ring-stone-400"
+      ></textarea>
+      <div class="mt-2 flex justify-end gap-2">
+        <button id="cancelCustomBtn" type="button" class="px-3 py-1 text-xs rounded border border-stone-300 text-stone-700 hover:bg-stone-100">
+          Cancel
+        </button>
+        <button id="applyCustomBtn" type="button" class="px-3 py-1 text-xs rounded bg-stone-800 text-white hover:bg-stone-900 font-medium">
+          Use This Paragraph
+        </button>
+      </div>
+    </section>
+
+    <!-- Top Section: Bounded Scrollable Reference Paragraph (No live highlighting) -->
+    <section class="flex min-h-[150px] flex-1 basis-0 flex-col rounded-lg border border-stone-200 bg-white shadow-xs">
+      <div id="passageAttribution" hidden class="border-b border-stone-200 bg-stone-50 px-4 py-2 text-xs leading-relaxed text-stone-600">
+        <a id="passageSource" target="_blank" rel="noopener noreferrer" class="font-semibold text-stone-900 underline decoration-stone-400 underline-offset-2"></a>
+        <span id="passageDetails"></span> ·
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" class="underline decoration-stone-400 underline-offset-2">CC BY-SA 4.0</a>
+      </div>
+      <div id="referenceScroll" class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+        <div id="referenceParagraph" class="legal-serif leading-relaxed text-stone-900 select-text" style="font-size: 18px;"></div>
+      </div>
+    </section>
+
+    <!-- Bottom Section: Dedicated Typing Input Box Always Visible Below -->
+    <section class="flex-1 basis-0 min-h-[150px] bg-white border border-stone-200 rounded-lg shadow-xs flex flex-col">
+      <textarea
+        id="typingBox"
+        placeholder="Start typing the paragraph here..."
+        spellcheck="false"
+        autocorrect="off"
+        autocapitalize="off"
+        class="flex-1 m-2 p-3 legal-serif leading-relaxed text-stone-900 bg-[#FDFBF7] border border-stone-300 rounded focus:outline-none focus:ring-2 focus:ring-stone-400 resize-none overflow-y-auto"
+        style="font-size: 18px;"
+      ></textarea>
+    </section>
+  </main>
+
+  <dialog id="customTimeDialog" aria-labelledby="customTimeTitle" aria-describedby="customTimeHint" class="m-auto w-11/12 max-w-sm rounded-xl border border-stone-200 bg-white p-5 text-stone-900 shadow-xl backdrop:bg-black/50">
+    <form id="customTimeForm">
+      <h2 id="customTimeTitle" class="text-lg font-semibold">Custom Time</h2>
+      <p id="customTimeHint" class="mt-1 text-sm text-stone-600"></p>
+      <div class="mt-4 grid grid-cols-2 gap-3">
+        <label class="text-xs font-semibold text-stone-700">
+          Minutes
+          <input id="timerMinutes" type="number" min="0" max="999" step="1" inputmode="numeric" required autofocus class="mt-1 block w-full rounded border border-stone-300 p-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-stone-400" />
+        </label>
+        <label class="text-xs font-semibold text-stone-700">
+          Seconds
+          <input id="timerSeconds" type="number" min="0" max="59" step="1" inputmode="numeric" required class="mt-1 block w-full rounded border border-stone-300 p-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-stone-400" />
+        </label>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center justify-end gap-2 text-xs">
+        <button id="disableTimerBtn" type="button" class="mr-auto px-2 py-1 text-stone-600 underline hover:text-stone-900">Turn Off Timer</button>
+        <button id="cancelTimerBtn" type="button" class="px-3 py-1 rounded border border-stone-300 text-stone-700 hover:bg-stone-100">Cancel</button>
+        <button type="submit" class="px-3 py-1 rounded bg-stone-800 text-white hover:bg-stone-900 font-medium">Set Time</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Post-Session Metrics & Mistake Review Modal -->
+  <div id="resultsModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+        <h2 class="text-lg font-semibold text-stone-900">Session Summary</h2>
+        <button id="closeModalBtn" type="button" class="text-stone-500 hover:text-stone-800 text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Metrics Grid (No live metrics shown while typing) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">Actual Words Speed (Net / Gross)</div>
+          <div id="metricActualNetWpm" class="text-xl font-bold text-stone-900 mt-0.5">0.0 Net WPM</div>
+          <div id="metricActualGrossWpm" class="text-xs text-stone-600 mt-0.5">0.0 Gross WPM (0 actual words)</div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">5-Keystroke Word Speed (Net / Gross)</div>
+          <div id="metricFiveKeyNetWpm" class="text-xl font-bold text-stone-900 mt-0.5">0.0 Net WPM</div>
+          <div id="metricFiveKeyGrossWpm" class="text-xs text-stone-600 mt-0.5">0.0 Gross WPM (0.0 five-key words)</div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">Accuracy</div>
+          <div id="metricAccuracy" class="text-xl font-bold text-stone-900 mt-0.5">0.0%</div>
+          <div id="metricWrongWords" class="text-xs text-stone-600 mt-0.5">0 wrong words</div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">Elapsed Time</div>
+          <div id="metricTime" class="text-xl font-bold text-stone-900 mt-0.5">00:00</div>
+          <div class="text-xs text-stone-500 mt-0.5">Active typing duration</div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">Key Depressions</div>
+          <div id="metricTotalKeys" class="text-xl font-bold text-stone-900 mt-0.5">0 keys</div>
+          <div id="metricKpm" class="text-xs text-stone-600 mt-0.5">0.0 KPM (keys / min)</div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs font-semibold text-stone-600">Progress (Words &amp; Characters)</div>
+          <div id="metricWordsCount" class="text-xl font-bold text-stone-900 mt-0.5">0 / 0 words</div>
+          <div id="metricCharsCount" class="text-xs text-stone-600 mt-0.5">0 / 0 chars</div>
+        </div>
+      </div>
+
+      <!-- Post-Session Mistake Review -->
+      <div class="border border-stone-200 rounded-lg p-4 bg-[#FDFBF7]">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-semibold text-stone-800">Paragraph Mistake Review (Word &amp; Character Comparison)</h3>
+          <span id="mistakeSummaryBadge" class="text-xs px-2 py-0.5 rounded bg-stone-200 text-stone-700 font-medium">0 mistakes</span>
+        </div>
+        <div id="mistakeReviewContainer" class="legal-serif text-base leading-relaxed text-stone-800"></div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap justify-between items-center gap-2">
+        <div id="saveStatusNote" class="text-xs text-stone-500">Session saved automatically to local history.</div>
+        <div class="flex gap-2">
+          <button id="viewGraphFromModalBtn" type="button" class="px-4 py-2 text-sm rounded-lg border border-stone-300 bg-white hover:bg-stone-100 text-stone-800 font-medium">
+            View Progress Graph
+          </button>
+          <button id="restartSessionBtn" type="button" class="px-4 py-2 text-sm rounded-lg bg-stone-800 hover:bg-stone-900 text-white font-medium">
+            Practice Again
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historical Progress Graph & Session Log Modal -->
+  <div id="progressModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 rounded-xl max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-stone-900">Speed History &amp; Improvement Graph</h2>
+          <p class="text-xs text-stone-500">Compare today, earlier days, last week, or your progress over a full month.</p>
+        </div>
+        <button id="closeProgressBtn" type="button" class="text-stone-500 hover:text-stone-800 text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Filter Controls & Backup/Restore -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-center gap-1.5" id="rangeFilterGroup">
+          <button data-range="all" type="button" class="range-btn px-3 py-1 text-xs rounded-md bg-stone-800 text-white font-medium">All Sessions</button>
+          <button data-range="today" type="button" class="range-btn px-3 py-1 text-xs rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-100">Today</button>
+          <button data-range="7d" type="button" class="range-btn px-3 py-1 text-xs rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-100">Past 7 Days</button>
+          <button data-range="30d" type="button" class="range-btn px-3 py-1 text-xs rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-100">Past 30 Days</button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="exportHistoryBtn" type="button" class="px-2.5 py-1 text-xs rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium">
+            Export Backup (.json)
+          </button>
+          <label class="px-2.5 py-1 text-xs rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-700 font-medium cursor-pointer">
+            Import Backup
+            <input id="importHistoryInput" type="file" accept=".json,application/json" class="hidden" />
+          </label>
+          <button id="clearHistoryBtn" type="button" class="px-2.5 py-1 text-xs rounded border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium">
+            Clear History
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Improvement Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs text-stone-500">Latest Actual Net WPM</div>
+          <div id="histLatestWpm" class="text-lg font-bold text-stone-900 mt-0.5">0.0</div>
+          <div id="histLatestSub" class="text-xs text-stone-500 mt-0.5">0.0 5-key Net WPM</div>
+        </div>
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs text-stone-500">Best Actual Net WPM</div>
+          <div id="histBestWpm" class="text-lg font-bold text-stone-900 mt-0.5">0.0</div>
+          <div id="histBestSub" class="text-xs text-stone-500 mt-0.5">All sessions in range</div>
+        </div>
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs text-stone-500">Change vs. First in Range</div>
+          <div id="histDeltaWpm" class="text-lg font-bold text-stone-900 mt-0.5">+0.0</div>
+          <div id="histDeltaPct" class="text-xs text-stone-500 mt-0.5">Improvement</div>
+        </div>
+        <div class="p-3 rounded-lg bg-stone-50 border border-stone-200">
+          <div class="text-xs text-stone-500">Recorded Sessions</div>
+          <div id="histCount" class="text-lg font-bold text-stone-900 mt-0.5">0</div>
+          <div id="histAvgAcc" class="text-xs text-stone-500 mt-0.5">Avg Accuracy: 0.0%</div>
+        </div>
+      </div>
+
+      <!-- Chart Canvas -->
+      <div class="bg-[#FDFBF7] border border-stone-200 rounded-lg p-4 mb-5">
+        <div class="h-64 w-full">
+          <canvas id="speedHistoryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Session Log Table -->
+      <div class="border border-stone-200 rounded-lg overflow-hidden">
+        <div class="bg-stone-50 px-4 py-2 border-b border-stone-200 flex items-center justify-between">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-stone-600">Past Sessions Log</h3>
+          <span class="text-xs text-stone-500">Newest first</span>
+        </div>
+        <div class="max-h-56 overflow-y-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-stone-100 text-stone-600 sticky top-0">
+              <tr>
+                <th class="py-2 px-3 font-semibold">Date &amp; Time</th>
+                <th class="py-2 px-3 font-semibold">Actual Net / Gross</th>
+                <th class="py-2 px-3 font-semibold">5-Key Net / Gross</th>
+                <th class="py-2 px-3 font-semibold">Accuracy</th>
+                <th class="py-2 px-3 font-semibold">Keys (KPM)</th>
+                <th class="py-2 px-3 font-semibold">Duration</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-stone-200 text-stone-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { findOnlinePassages, PassageRateLimitError } from './passages.mjs';
+
+    const DEFAULT_PARAGRAPH = `When a landlord and a tenant sign a residential lease agreement, both parties enter into a binding legal contract that governs how the rental property may be used and maintained. Under standard housing laws, the lease specifies the monthly rent amount, the due date each month, the length of the tenancy, and the rules regarding security deposits. Before a tenant moves in, the landlord is typically required to deliver a habitable dwelling that meets basic health and safety codes, including working plumbing, heating, electricity, and secure locks. Many lease contracts also include a move-in checklist so both sides can document any existing scratches, stains, or repairs needed before the tenancy begins. Throughout the rental term, the tenant has the right to quiet enjoyment of the home, meaning the landlord cannot enter the premises arbitrarily without proper advance notice except in genuine emergencies. At the same time, the tenant has a legal duty to pay rent on time, keep the unit reasonably clean, avoid causing intentional or negligent damage, and follow reasonable building rules such as noise quiet hours or trash disposal guidelines. If a repair issue arises, the tenant should notify the landlord promptly in writing so maintenance can be arranged within a reasonable timeframe. Security deposit rules vary by jurisdiction, but laws commonly require the landlord to hold the deposit properly, return it within a set number of days after move-out, and provide an itemized statement if any deductions are taken for unpaid rent or damage beyond normal wear and tear. Renewal terms, notice periods for ending a month-to-month or fixed-term lease, and restrictions on subletting are also important clauses that every renter should read carefully before signing. If a disagreement occurs over maintenance, lease violations, or deposit deductions, both parties often benefit from keeping clear written records of notices, receipts, and communications. When informal resolution fails, tenants and landlords may turn to local housing mediation services, municipal housing authorities, or small claims and housing courts to resolve disputes according to applicable statutes and the written terms of the agreement. Clear lease terms help prevent misunderstandings, protect habitability standards, and establish predictable responsibilities for both the property owner and the resident throughout the entire duration of the tenancy.`;
+
+    const STORAGE_KEY = 'typing_practice_session_history_v1';
+
+    let activeParagraph = DEFAULT_PARAGRAPH;
+    let fontSizePx = 18;
+    let startTime = null;
+    let customTimeLimitMs = 0;
+    let sessionDeadline = null;
+    let sessionTimerId = null;
+    let totalKeyDepressions = 0;
+    let previousTypedLength = 0;
+    let backspaceDisabled = false;
+    let activeRangeFilter = 'all';
+    let speedChartInstance = null;
+
+    const referenceParagraphEl = document.getElementById('referenceParagraph');
+    const typingBoxEl = document.getElementById('typingBox');
+    const fontSizeLabelEl = document.getElementById('fontSizeLabel');
+    const customTextPanelEl = document.getElementById('customTextPanel');
+    const customTextInputEl = document.getElementById('customTextInput');
+    const resultsModalEl = document.getElementById('resultsModal');
+    const progressModalEl = document.getElementById('progressModal');
+    const fullscreenBtnEl = document.getElementById('fullscreenBtn');
+    const backspaceBtnEl = document.getElementById('backspaceBtn');
+    const sessionTimerEl = document.getElementById('sessionTimer');
+    const customTimeDialogEl = document.getElementById('customTimeDialog');
+    const timerMinutesEl = document.getElementById('timerMinutes');
+    const timerSecondsEl = document.getElementById('timerSeconds');
+    const passageQueryEl = document.getElementById('passageQuery');
+    const passageStatusEl = document.getElementById('passageStatus');
+    const passageAttributionEl = document.getElementById('passageAttribution');
+    const passageSourceEl = document.getElementById('passageSource');
+    const passageDetailsEl = document.getElementById('passageDetails');
+    const difficultyButtons = document.querySelectorAll('[data-passage-level]');
+    const levelLabels = { easy: 'Easy', moderate: 'Moderate', hard: 'Hard' };
+
+    let selectedLevel = 'moderate';
+    let passageRequest;
+    let passageResults;
+    let activeOnlinePassage;
+
+    function loadHistory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        console.error('Failed to load session history:', err);
+        return [];
+      }
+    }
+
+    function saveHistory(records) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      } catch (err) {
+        console.error('Failed to save session history:', err);
+      }
+    }
+
+    function recordSessionToHistory(entry) {
+      const history = loadHistory();
+      history.push(entry);
+      saveHistory(history);
+    }
+
+    const LEVEL_NAMES_OK = (name) => ['easy', 'moderate', 'hard'].includes(name);
+    const LAST_PASSAGE_KEY = 'typing_practice_last_passage_v1';
+
+    function saveLastPassage() {
+      try {
+        localStorage.setItem(LAST_PASSAGE_KEY, JSON.stringify({
+          text: activeParagraph,
+          level: selectedLevel,
+          online: activeOnlinePassage
+            ? { title: activeOnlinePassage.title, url: activeOnlinePassage.url, level: activeOnlinePassage.level,
+                wiki: activeOnlinePassage.wiki, sourceName: activeOnlinePassage.sourceName, wordCount: activeOnlinePassage.wordCount }
+            : null
+        }));
+      } catch (err) {
+        console.error('Could not remember the last passage:', err);
+      }
+    }
+
+    function loadLastPassage() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LAST_PASSAGE_KEY) || 'null');
+        if (saved && typeof saved.text === 'string' && saved.text.trim()) return saved;
+      } catch (err) { /* ignore a damaged entry */ }
+      return null;
+    }
+
+    function setParagraph(text, onlinePassage = null, remember = true) {
+      activeParagraph = (text || '').trim() || DEFAULT_PARAGRAPH;
+      activeOnlinePassage = onlinePassage;
+      if (remember) saveLastPassage();
+      referenceParagraphEl.textContent = activeParagraph;
+      document.getElementById('referenceScroll').scrollTop = 0;
+      passageAttributionEl.hidden = !onlinePassage;
+      if (onlinePassage) {
+        passageSourceEl.href = onlinePassage.url;
+        passageSourceEl.textContent = onlinePassage.title;
+        const wiki = onlinePassage.sourceName || (onlinePassage.wiki === 'simple' ? 'Simple English Wikipedia' : 'Wikipedia');
+        passageDetailsEl.textContent = ` · ${levelLabels[onlinePassage.level]} · ${onlinePassage.wordCount} words · Adapted from ${wiki}`;
+      }
+      resetSessionState();
+    }
+
+    async function loadOnlinePassage({ initial = false } = {}) {
+      passageRequest?.abort();
+      const request = new AbortController();
+      passageRequest = request;
+      const level = selectedLevel;
+      const topic = passageQueryEl.value.trim().replace(/\s+/g, ' ');
+      const levelLabel = levelLabels[level];
+      difficultyButtons.forEach(button => {
+        const selected = button.dataset.passageLevel === level;
+        button.setAttribute('aria-pressed', selected);
+        if (selected) document.getElementById('passageDifficultyHint').textContent = button.title;
+      });
+      try {
+        // Fetch a fresh set when the level/topic changed, or when every passage in the
+        // current set has been shown, so New Passage keeps giving something new
+        const shownAll = passageResults && passageResults.matches.length > 0 &&
+          passageResults.matches[passageResults.matches.length - 1].url === activeOnlinePassage?.url;
+        if (passageResults?.level !== level || passageResults.topic !== topic || shownAll) {
+          passageStatusEl.textContent = `Finding a ${levelLabel.toLowerCase()} passage from several sources…`;
+          const signal = AbortSignal.any([request.signal, AbortSignal.timeout(30000)]);
+          const matches = await findOnlinePassages(level, topic, signal);
+          if (request.signal.aborted) return;
+          passageResults = { level, topic, matches };
+        }
+
+        const { matches } = passageResults;
+        if (!matches.length) {
+          passageResults = null;
+          passageStatusEl.textContent = topic
+            ? `No ${levelLabel.toLowerCase()} passage of about 400 words found for “${topic}”. Try a broader topic or another level.`
+            : 'No online passage found at this level. Try a search or another level.';
+          return;
+        }
+
+        const currentIndex = matches.findIndex(match => match.url === activeOnlinePassage?.url);
+        const nextIndex = (currentIndex + 1) % matches.length;
+        if (currentIndex === nextIndex && activeOnlinePassage?.level === level) {
+          passageStatusEl.textContent = topic
+            ? `This is the only match for “${topic}” at this level. Try another topic for more passages.`
+            : 'This is the only suggested passage at this level right now. Try searching for a topic.';
+          return;
+        }
+        if (startTime !== null && !typingBoxEl.readOnly && (initial || !window.confirm('Switch passages and restart your current typing session?'))) {
+          passageStatusEl.textContent = 'Current session kept. Choose New Passage when you’re ready to switch.';
+          return;
+        }
+
+        const match = matches[nextIndex];
+        setParagraph(match.text, match);
+        customTextPanelEl.classList.add('hidden');
+        if (!topic) {
+          passageStatusEl.textContent = 'Pick a difficulty for a suggested passage, or search for a topic.';
+        } else if (matches.length === 1) {
+          passageStatusEl.textContent = `One match for “${topic}” at this level. Try another topic for more passages.`;
+        } else {
+          passageStatusEl.textContent = `Match ${nextIndex + 1} of ${matches.length} for “${topic}”. Select New Passage to see another match.`;
+        }
+      } catch (error) {
+        if (request.signal.aborted) return;
+        passageStatusEl.textContent = error instanceof PassageRateLimitError
+          ? 'The sources are limiting requests. Keep practicing here and try again in a moment.'
+          : 'The passage sources are unavailable right now. You can keep practicing with the current passage or try again.';
+      }
+    }
+
+    function resetSessionState() {
+      clearInterval(sessionTimerId);
+      sessionTimerId = null;
+      typingBoxEl.value = '';
+      typingBoxEl.readOnly = false;
+      startTime = null;
+      sessionDeadline = null;
+      totalKeyDepressions = 0;
+      previousTypedLength = 0;
+      renderSessionTimer();
+    }
+
+    function updateFontSize(delta) {
+      fontSizePx = Math.min(36, Math.max(12, fontSizePx + delta));
+      referenceParagraphEl.style.fontSize = `${fontSizePx}px`;
+      typingBoxEl.style.fontSize = `${fontSizePx}px`;
+      fontSizeLabelEl.textContent = `${fontSizePx}px`;
+    }
+
+    function updateFullscreenLabel() {
+      const isFs = Boolean(document.fullscreenElement);
+      fullscreenBtnEl.textContent = isFs ? 'Exit Full Screen' : 'Full Screen';
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.error('Fullscreen toggle failed:', err);
+      } finally {
+        updateFullscreenLabel();
+      }
+    }
+
+    // Minimal-edit alignment between the expected and typed word.
+    function alignChars(exp, act) {
+      const n = exp.length, m = act.length;
+      const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+      for (let i = 0; i <= n; i++) dp[i][0] = i;
+      for (let j = 0; j <= m; j++) dp[0][j] = j;
+      for (let i = 1; i <= n; i++) {
+        for (let j = 1; j <= m; j++) {
+          const cost = exp[i - 1] === act[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j - 1] + cost, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
+        }
+      }
+      const ops = [];
+      let i = n, j = m;
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && exp[i - 1] === act[j - 1] && dp[i][j] === dp[i - 1][j - 1]) {
+          ops.push({ type: 'match', exp: exp[i - 1], act: act[j - 1] }); i--; j--;
+        } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+          ops.push({ type: 'sub', exp: exp[i - 1], act: act[j - 1] }); i--; j--;
+        } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+          ops.push({ type: 'extra', act: act[j - 1] }); j--;
+        } else {
+          ops.push({ type: 'missing', exp: exp[i - 1] }); i--;
+        }
+      }
+      return ops.reverse();
+    }
+
+    function editDistance(a, b) {
+      if (a === b) return 0;
+      const n = a.length, m = b.length;
+      if (!n) return m;
+      if (!m) return n;
+      let prev = Array.from({ length: m + 1 }, (_, j) => j);
+      for (let i = 1; i <= n; i++) {
+        const cur = [i];
+        for (let j = 1; j <= m; j++) {
+          cur[j] = Math.min(prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), prev[j] + 1, cur[j - 1] + 1);
+        }
+        prev = cur;
+      }
+      return prev[m];
+    }
+
+    // Aligns the typed words with the passage words, so a skipped word, an
+    // extra word, a missing/extra letter or a wrong punctuation mark costs only
+    // that one mistake. Nothing after it gets shifted out of place.
+    function alignWords(E, T) {
+      const n = E.length, m = T.length;
+      const GAP = 1; // cost of a missing word or an extra word
+      // Similar words (a typo) are cheap to pair up; clearly different words
+      // cost a full mistake, so they are not chained together to hide a skip.
+      const subCost = (i, j) => {
+        const ratio = editDistance(E[i], T[j]) / Math.max(E[i].length, T[j].length, 1);
+        return ratio <= 0.5 ? ratio : 1;
+      };
+      const dp = Array.from({ length: n + 1 }, () => new Float64Array(m + 1));
+      for (let j = 1; j <= m; j++) dp[0][j] = j * GAP;
+      for (let i = 1; i <= n; i++) {
+        dp[i][0] = i * GAP;
+        for (let j = 1; j <= m; j++) {
+          dp[i][j] = Math.min(dp[i - 1][j - 1] + subCost(i - 1, j - 1), dp[i - 1][j] + GAP, dp[i][j - 1] + GAP);
+        }
+      }
+      // Everything typed must be explained, but the part of the passage that
+      // is not reached yet is free. Pick the best place where typing stopped.
+      let endI = 0, best = Infinity;
+      for (let i = 0; i <= n; i++) {
+        if (dp[i][m] <= best + 1e-9) { best = dp[i][m]; endI = i; }
+      }
+      const steps = [];
+      let i = endI, j = m;
+      const eq = (x, y) => Math.abs(x - y) < 1e-9;
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && eq(dp[i][j], dp[i - 1][j - 1] + subCost(i - 1, j - 1))) {
+          steps.push({ type: 'pair', i: i - 1, j: j - 1 }); i--; j--;
+        } else if (j > 0 && eq(dp[i][j], dp[i][j - 1] + GAP)) {
+          steps.push({ type: 'extra', j: j - 1 }); j--;
+        } else {
+          steps.push({ type: 'missing', i: i - 1 }); i--;
+        }
+      }
+      return { steps: steps.reverse(), endI };
+    }
+
+    // Character accuracy: compares the whole typed text with the passage letter
+    // by letter (spaces and punctuation included). Uses the fewest possible edits,
+    // so one extra, missing or wrong character is exactly one error and the
+    // characters after it still line up. The untyped end of the passage is ignored.
+    function charAccuracyStats(expectedText, actualText) {
+      const E = expectedText.trim().replace(/\s+/g, ' ');
+      const T = actualText.trim().replace(/\s+/g, ' ');
+      const m = T.length;
+      if (m === 0) return { matches: 0, errors: 0, total: 0 };
+      const B = 300;                 // how far typing may drift from the passage
+      const W = 2 * B + 1;
+      const INF = 65535;
+      const nMax = Math.min(E.length, m + B);
+      const dp = new Uint16Array((m + 1) * W).fill(INF);
+      const idx = (j, i) => j * W + (i - j + B);
+      const get = (j, i) => (i < 0 || i > nMax || i - j < -B || i - j > B) ? INF : dp[idx(j, i)];
+
+      for (let j = 0; j <= m; j++) {
+        const lo = Math.max(0, j - B), hi = Math.min(nMax, j + B);
+        for (let i = lo; i <= hi; i++) {
+          let v;
+          if (j === 0) v = i;                       // passage chars not typed yet at the start
+          else if (i === 0) v = j;
+          else {
+            const diag = get(j - 1, i - 1) + (E[i - 1] === T[j - 1] ? 0 : 1);
+            const extra = get(j - 1, i) + 1;        // typed an extra character
+            const missing = get(j, i - 1) + 1;      // skipped a character
+            v = Math.min(diag, extra, missing);
+          }
+          dp[idx(j, i)] = Math.min(v, INF);
+        }
+      }
+      // Choose where typing stopped in the passage (the rest is not counted)
+      let endI = 0, best = INF + 1;
+      for (let i = Math.max(0, m - B); i <= Math.min(nMax, m + B); i++) {
+        const v = get(m, i);
+        if (v <= best) { best = v; endI = i; }
+      }
+      let i = endI, j = m, matches = 0, errors = 0;
+      while (i > 0 || j > 0) {
+        const cur = get(j, i);
+        if (i > 0 && j > 0 && E[i - 1] === T[j - 1] && cur === get(j - 1, i - 1)) { matches++; i--; j--; }
+        else if (i > 0 && j > 0 && cur === get(j - 1, i - 1) + 1) { errors++; i--; j--; }
+        else if (j > 0 && cur === get(j - 1, i) + 1) { errors++; j--; }
+        else if (i > 0 && cur === get(j, i - 1) + 1) { errors++; i--; }
+        else break; // safety, should not happen
+      }
+      return { matches, errors, total: matches + errors };
+    }
+
+    function evaluateWordByWord(expectedText, actualText) {
+      const expectedWords = expectedText.trim().split(/\s+/).filter(Boolean);
+      const actualWords = actualText.trim().length > 0 ? actualText.trim().split(/\s+/) : [];
+      const results = [];
+      let wrongWordCount = 0;
+      let correctWordCount = 0;
+      let correctChars = 0;
+      let comparedChars = 0;
+
+      const { steps, endI } = alignWords(expectedWords, actualWords);
+      const charStats = charAccuracyStats(expectedText, actualText);
+
+      steps.forEach((step) => {
+        if (step.type === 'pair') {
+          const expWord = expectedWords[step.i];
+          const actWord = actualWords[step.j];
+          const isExactMatch = expWord === actWord;
+          if (isExactMatch) correctWordCount++; else wrongWordCount++;
+          const charComparisons = [];
+          alignChars(expWord, actWord).forEach((op) => {
+            comparedChars++;
+            if (op.type === 'match') {
+              correctChars++;
+              charComparisons.push({ char: op.exp, status: 'right' });
+            } else if (op.type === 'extra') {
+              charComparisons.push({ char: op.act, expectedChar: '', actualChar: op.act, status: 'wrong' });
+            } else if (op.type === 'missing') {
+              charComparisons.push({ char: op.exp, expectedChar: op.exp, actualChar: '', status: 'wrong' });
+            } else {
+              charComparisons.push({ char: op.act, expectedChar: op.exp, actualChar: op.act, status: 'wrong' });
+            }
+          });
+          results.push({ index: step.i, expectedWord: expWord, actualWord: actWord, hasTypedWord: true, isExactMatch, charComparisons });
+        } else if (step.type === 'missing') {
+          const expWord = expectedWords[step.i];
+          wrongWordCount++;
+          comparedChars += expWord.length;
+          results.push({
+            index: step.i, expectedWord: expWord, actualWord: '', hasTypedWord: true, isExactMatch: false,
+            charComparisons: expWord.split('').map((ch) => ({ char: ch, expectedChar: ch, actualChar: '', status: 'wrong' }))
+          });
+        } else {
+          const actWord = actualWords[step.j];
+          wrongWordCount++;
+          comparedChars += actWord.length;
+          results.push({
+            index: -1, expectedWord: '', actualWord: actWord, hasTypedWord: true, isExactMatch: false, isExtraWord: true,
+            charComparisons: actWord.split('').map((ch) => ({ char: ch, expectedChar: '', actualChar: ch, status: 'wrong' }))
+          });
+        }
+      });
+
+      // Part of the passage not reached yet
+      for (let i = endI; i < expectedWords.length; i++) {
+        results.push({
+          index: i, expectedWord: expectedWords[i], actualWord: '', hasTypedWord: false, isExactMatch: false,
+          charComparisons: expectedWords[i].split('').map((ch) => ({ char: ch, status: 'untyped' }))
+        });
+      }
+
+      return {
+        results,
+        wrongWordCount,
+        correctWordCount,
+        correctChars: charStats.matches,
+        comparedChars: charStats.total,
+        totalExpectedWords: expectedWords.length,
+        typedWordCount: actualWords.length
+      };
+    }
+
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+      return `${mins}:${secs}`;
+    }
+
+    function renderSessionTimer() {
+      const remainingMs = sessionDeadline === null ? customTimeLimitMs : sessionDeadline - Date.now();
+      sessionTimerEl.hidden = sessionDeadline === null && customTimeLimitMs === 0;
+      sessionTimerEl.textContent = `Time left: ${formatDuration(Math.ceil(remainingMs / 1000) * 1000)}`;
+    }
+
+    function expireSessionIfNeeded() {
+      if (sessionDeadline === null || typingBoxEl.readOnly || Date.now() < sessionDeadline) return false;
+      openResultsModal();
+      return true;
+    }
+
+    function setCustomTimeLimit(limitMs) {
+      customTimeLimitMs = limitMs;
+      if (startTime === null) renderSessionTimer();
+      customTimeDialogEl.close();
+      if (!typingBoxEl.readOnly) typingBoxEl.focus();
+    }
+
+    function renderMistakeReview(evaluation) {
+      const container = document.getElementById('mistakeReviewContainer');
+      const badge = document.getElementById('mistakeSummaryBadge');
+      container.innerHTML = '';
+
+      badge.textContent = `${evaluation.wrongWordCount} word ${evaluation.wrongWordCount === 1 ? 'mistake' : 'mistakes'}`;
+
+      evaluation.results.forEach((item, idx) => {
+        const span = document.createElement('span');
+        if (!item.hasTypedWord) {
+          span.textContent = item.expectedWord;
+          span.className = 'text-stone-400';
+        } else if (item.isExactMatch) {
+          span.textContent = item.expectedWord;
+          span.className = 'text-stone-900';
+        } else {
+          span.className = 'word-wrong inline-block';
+          span.title = item.isExtraWord ? `Extra word: "${item.actualWord}"` : (item.actualWord ? `Typed: "${item.actualWord}" | Expected: "${item.expectedWord}"` : `Missing word: "${item.expectedWord}"`);
+          item.charComparisons.forEach((ch) => {
+            const cSpan = document.createElement('span');
+            cSpan.textContent = ch.char;
+            if (ch.status === 'wrong') {
+              cSpan.className = 'char-wrong';
+            } else {
+              cSpan.className = 'char-right';
+            }
+            span.appendChild(cSpan);
+          });
+          if (item.expectedWord && item.actualWord) {
+            const hint = document.createElement('span');
+            hint.className = 'text-xs text-stone-600 ml-1';
+            hint.textContent = `[${item.expectedWord}]`;
+            span.appendChild(hint);
+          }
+        }
+        container.appendChild(span);
+        if (idx < evaluation.results.length - 1) {
+          container.appendChild(document.createTextNode(' '));
+        }
+      });
+    }
+
+    function openResultsModal() {
+      if (typingBoxEl.readOnly) {
+        resultsModalEl.classList.remove('hidden');
+        document.getElementById('closeModalBtn').focus();
+        return;
+      }
+      try {
+        const now = Date.now();
+        if (sessionDeadline !== null) {
+          clearInterval(sessionTimerId);
+          sessionTimerId = null;
+          typingBoxEl.readOnly = true;
+          sessionTimerEl.textContent = now >= sessionDeadline ? 'Time’s up' : 'Session ended';
+          if (customTimeDialogEl.open) customTimeDialogEl.close();
+          progressModalEl.classList.add('hidden');
+        }
+        const elapsedMs = startTime === null ? 1000 : Math.max(1000, Math.min(now, sessionDeadline ?? now) - startTime);
+        const elapsedMinutes = elapsedMs / 60000;
+        const typedText = typingBoxEl.value || '';
+        const typedChars = typedText.length;
+        const keyDepressions = Math.max(totalKeyDepressions, typedChars);
+
+        const evaluation = evaluateWordByWord(activeParagraph, typedText);
+
+        // 1. Actual words in the text (space-delimited words)
+        const actualTypedWords = evaluation.typedWordCount;
+        const actualGrossWpm = actualTypedWords / elapsedMinutes;
+        const actualNetWords = Math.max(0, actualTypedWords - evaluation.wrongWordCount);
+        const actualNetWpm = actualNetWords / elapsedMinutes;
+
+        // 2. Five-keystroke word calculation (every 5 key depressions = 1 word)
+        const fiveKeyGrossWords = keyDepressions / 5;
+        const fiveKeyGrossWpm = fiveKeyGrossWords / elapsedMinutes;
+        const fiveKeyNetWords = Math.max(0, fiveKeyGrossWords - evaluation.wrongWordCount);
+        const fiveKeyNetWpm = fiveKeyNetWords / elapsedMinutes;
+
+        const kpm = keyDepressions / elapsedMinutes;
+        const accuracy = evaluation.comparedChars > 0
+          ? Math.max(0, Math.min(100, (evaluation.correctChars / evaluation.comparedChars) * 100))
+          : 0;
+
+        document.getElementById('metricActualNetWpm').textContent = `${actualNetWpm.toFixed(1)} Net WPM`;
+        document.getElementById('metricActualGrossWpm').textContent = `${actualGrossWpm.toFixed(1)} Gross WPM (${actualTypedWords} actual words)`;
+
+        document.getElementById('metricFiveKeyNetWpm').textContent = `${fiveKeyNetWpm.toFixed(1)} Net WPM`;
+        document.getElementById('metricFiveKeyGrossWpm').textContent = `${fiveKeyGrossWpm.toFixed(1)} Gross WPM (${fiveKeyGrossWords.toFixed(1)} 5-key words)`;
+
+        document.getElementById('metricAccuracy').textContent = `${accuracy.toFixed(1)}%`;
+        document.getElementById('metricWrongWords').textContent = `${evaluation.wrongWordCount} wrong ${evaluation.wrongWordCount === 1 ? 'word' : 'words'}`;
+
+        document.getElementById('metricTime').textContent = formatDuration(elapsedMs);
+        document.getElementById('metricTotalKeys').textContent = `${keyDepressions} keys`;
+        document.getElementById('metricKpm').textContent = `${kpm.toFixed(1)} KPM (keys / min)`;
+        document.getElementById('metricWordsCount').textContent = `${actualTypedWords} / ${evaluation.totalExpectedWords} words`;
+        document.getElementById('metricCharsCount').textContent = `${typedChars} / ${activeParagraph.length} chars`;
+
+        renderMistakeReview(evaluation);
+
+        if (typedChars > 0) {
+          recordSessionToHistory({
+            id: `${now}-${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: now,
+            actualNetWpm: Number(actualNetWpm.toFixed(1)),
+            actualGrossWpm: Number(actualGrossWpm.toFixed(1)),
+            fiveKeyNetWpm: Number(fiveKeyNetWpm.toFixed(1)),
+            fiveKeyGrossWpm: Number(fiveKeyGrossWpm.toFixed(1)),
+            accuracy: Number(accuracy.toFixed(1)),
+            keyDepressions,
+            kpm: Number(kpm.toFixed(1)),
+            durationMs: elapsedMs,
+            typedWords: actualTypedWords,
+            typedChars
+          });
+          document.getElementById('saveStatusNote').textContent = 'Session saved to local history.';
+        } else {
+          document.getElementById('saveStatusNote').textContent = 'No keys typed yet—nothing added to history.';
+        }
+
+        resultsModalEl.classList.remove('hidden');
+      } catch (err) {
+        console.error('Error calculating session metrics:', err);
+        resultsModalEl.classList.remove('hidden');
+      }
+      if (typingBoxEl.readOnly) document.getElementById('closeModalBtn').focus();
+    }
+
+    function filterRecordsByRange(records, rangeKey) {
+      const now = Date.now();
+      if (rangeKey === 'today') {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        return records.filter((r) => r.timestamp >= startOfToday.getTime());
+      }
+      if (rangeKey === '7d') {
+        return records.filter((r) => r.timestamp >= now - 7 * 24 * 60 * 60 * 1000);
+      }
+      if (rangeKey === '30d') {
+        return records.filter((r) => r.timestamp >= now - 30 * 24 * 60 * 60 * 1000);
+      }
+      return records;
+    }
+
+    function formatShortDateTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderProgressView() {
+      const allHistory = loadHistory().sort((a, b) => a.timestamp - b.timestamp);
+      const filtered = filterRecordsByRange(allHistory, activeRangeFilter);
+
+      const latestEl = document.getElementById('histLatestWpm');
+      const latestSubEl = document.getElementById('histLatestSub');
+      const bestEl = document.getElementById('histBestWpm');
+      const bestSubEl = document.getElementById('histBestSub');
+      const deltaEl = document.getElementById('histDeltaWpm');
+      const deltaPctEl = document.getElementById('histDeltaPct');
+      const countEl = document.getElementById('histCount');
+      const avgAccEl = document.getElementById('histAvgAcc');
+      const tbodyEl = document.getElementById('historyTableBody');
+
+      countEl.textContent = `${filtered.length}`;
+
+      if (filtered.length === 0) {
+        latestEl.textContent = '0.0';
+        latestSubEl.textContent = '0.0 5-key Net WPM';
+        bestEl.textContent = '0.0';
+        bestSubEl.textContent = 'No sessions in range';
+        deltaEl.textContent = '+0.0';
+        deltaPctEl.textContent = 'No baseline yet';
+        avgAccEl.textContent = 'Avg Accuracy: 0.0%';
+        tbodyEl.innerHTML = '<tr><td colspan="6" class="py-6 px-3 text-center text-stone-500">Complete a typing session to start plotting your speed over time.</td></tr>';
+      } else {
+        const first = filtered[0];
+        const latest = filtered[filtered.length - 1];
+        const bestActual = Math.max(...filtered.map((r) => r.actualNetWpm || 0));
+        const bestFiveKey = Math.max(...filtered.map((r) => r.fiveKeyNetWpm || 0));
+        const avgAcc = filtered.reduce((acc, r) => acc + (r.accuracy || 0), 0) / filtered.length;
+        const diff = (latest.actualNetWpm || 0) - (first.actualNetWpm || 0);
+        const pct = first.actualNetWpm > 0 ? ((diff / first.actualNetWpm) * 100) : 0;
+
+        latestEl.textContent = `${(latest.actualNetWpm || 0).toFixed(1)} WPM`;
+        latestSubEl.textContent = `${(latest.fiveKeyNetWpm || 0).toFixed(1)} 5-key Net WPM`;
+        bestEl.textContent = `${bestActual.toFixed(1)} WPM`;
+        bestSubEl.textContent = `Best 5-key: ${bestFiveKey.toFixed(1)} WPM`;
+        deltaEl.textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(1)} WPM`;
+        deltaPctEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs. first in range`;
+        avgAccEl.textContent = `Avg Accuracy: ${avgAcc.toFixed(1)}%`;
+
+        const reversed = [...filtered].reverse();
+        tbodyEl.innerHTML = reversed.map((r) => `
+          <tr class="hover:bg-stone-50">
+            <td class="py-2 px-3 whitespace-nowrap">${formatShortDateTime(r.timestamp)}</td>
+            <td class="py-2 px-3 font-medium">${(r.actualNetWpm || 0).toFixed(1)} / ${(r.actualGrossWpm || 0).toFixed(1)} WPM</td>
+            <td class="py-2 px-3">${(r.fiveKeyNetWpm || 0).toFixed(1)} / ${(r.fiveKeyGrossWpm || 0).toFixed(1)} WPM</td>
+            <td class="py-2 px-3">${(r.accuracy || 0).toFixed(1)}%</td>
+            <td class="py-2 px-3">${r.keyDepressions || 0} (${(r.kpm || 0).toFixed(1)} KPM)</td>
+            <td class="py-2 px-3">${formatDuration(r.durationMs || 0)}</td>
+          </tr>
+        `).join('');
+      }
+
+      const ctx = document.getElementById('speedHistoryChart').getContext('2d');
+      if (speedChartInstance) {
+        speedChartInstance.destroy();
+      }
+
+      speedChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: filtered.map((r) => formatShortDateTime(r.timestamp)),
+          datasets: [
+            {
+              label: 'Actual Net WPM',
+              data: filtered.map((r) => r.actualNetWpm),
+              borderColor: '#1C1917',
+              backgroundColor: '#1C1917',
+              borderWidth: 2,
+              tension: 0.25,
+              pointRadius: 3.5
+            },
+            {
+              label: 'Actual Gross WPM',
+              data: filtered.map((r) => r.actualGrossWpm),
+              borderColor: '#78716C',
+              backgroundColor: '#78716C',
+              borderWidth: 1.75,
+              borderDash: [4, 4],
+              tension: 0.25,
+              pointRadius: 3
+            },
+            {
+              label: '5-Keystroke Net WPM',
+              data: filtered.map((r) => r.fiveKeyNetWpm),
+              borderColor: '#2563EB',
+              backgroundColor: '#2563EB',
+              borderWidth: 2,
+              tension: 0.25,
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { boxWidth: 12, font: { size: 11 } }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Words Per Minute (WPM)', font: { size: 11 } }
+            },
+            x: {
+              ticks: { maxRotation: 30, autoSkip: true, maxTicksLimit: 10, font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function openProgressModal() {
+      renderProgressView();
+      progressModalEl.classList.remove('hidden');
+    }
+
+    typingBoxEl.addEventListener('keydown', (e) => {
+      if (typingBoxEl.readOnly) return;
+      if (expireSessionIfNeeded()) {
+        e.preventDefault();
+        return;
+      }
+      if (backspaceDisabled && e.key === 'Backspace') {
+        e.preventDefault();
+        return;
+      }
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        totalKeyDepressions++;
+      } else if (e.key === 'Backspace' || e.key === 'Enter' || e.key === ' ') {
+        totalKeyDepressions++;
+      }
+    });
+
+    typingBoxEl.addEventListener('beforeinput', (e) => {
+      if (expireSessionIfNeeded() || (backspaceDisabled && e.inputType.startsWith('delete') && e.inputType.endsWith('Backward'))) {
+        e.preventDefault();
+      }
+    });
+
+    typingBoxEl.addEventListener('input', () => {
+      const currentLen = typingBoxEl.value.length;
+      if (startTime === null && currentLen > 0) {
+        startTime = Date.now();
+        if (customTimeLimitMs > 0) {
+          sessionDeadline = startTime + customTimeLimitMs;
+          renderSessionTimer();
+          sessionTimerId = setInterval(() => {
+            if (!expireSessionIfNeeded()) renderSessionTimer();
+          }, 200);
+        }
+      }
+      const diff = Math.abs(currentLen - previousTypedLength);
+      if (diff > 0 && totalKeyDepressions < currentLen) {
+        totalKeyDepressions += diff;
+      }
+      previousTypedLength = currentLen;
+    });
+
+    document.getElementById('customTimeBtn').addEventListener('click', () => {
+      const totalSeconds = customTimeLimitMs / 1000 || 60;
+      timerMinutesEl.value = Math.floor(totalSeconds / 60);
+      timerSecondsEl.value = totalSeconds % 60;
+      timerSecondsEl.setCustomValidity('');
+      document.getElementById('customTimeHint').textContent = startTime === null
+        ? 'The countdown starts when you begin typing.'
+        : 'Changes apply the next time you start a new session.';
+      customTimeDialogEl.showModal();
+    });
+    document.getElementById('customTimeForm').addEventListener('input', () => timerSecondsEl.setCustomValidity(''));
+    document.getElementById('customTimeForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const totalSeconds = timerMinutesEl.valueAsNumber * 60 + timerSecondsEl.valueAsNumber;
+      if (totalSeconds === 0) {
+        timerSecondsEl.setCustomValidity('Enter a duration of at least 1 second, or turn off the timer.');
+        timerSecondsEl.reportValidity();
+        return;
+      }
+      setCustomTimeLimit(totalSeconds * 1000);
+    });
+    document.getElementById('cancelTimerBtn').addEventListener('click', () => customTimeDialogEl.close());
+    document.getElementById('disableTimerBtn').addEventListener('click', () => setCustomTimeLimit(0));
+
+    document.getElementById('fontDecBtn').addEventListener('click', () => updateFontSize(-2));
+    document.getElementById('fontIncBtn').addEventListener('click', () => updateFontSize(2));
+    fullscreenBtnEl.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFullscreenLabel);
+    backspaceBtnEl.addEventListener('click', () => {
+      backspaceDisabled = !backspaceDisabled;
+      backspaceBtnEl.textContent = backspaceDisabled ? 'Enable Backspace' : 'Disable Backspace';
+    });
+
+    document.getElementById('openProgressBtn').addEventListener('click', openProgressModal);
+    document.getElementById('viewGraphFromModalBtn').addEventListener('click', () => {
+      resultsModalEl.classList.add('hidden');
+      openProgressModal();
+    });
+    document.getElementById('closeProgressBtn').addEventListener('click', () => {
+      progressModalEl.classList.add('hidden');
+    });
+
+    document.querySelectorAll('.range-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeRangeFilter = btn.getAttribute('data-range') || 'all';
+        document.querySelectorAll('.range-btn').forEach((b) => {
+          b.className = 'range-btn px-3 py-1 text-xs rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-100';
+        });
+        btn.className = 'range-btn px-3 py-1 text-xs rounded-md bg-stone-800 text-white font-medium';
+        renderProgressView();
+      });
+    });
+
+    document.getElementById('exportHistoryBtn').addEventListener('click', () => {
+      const dataStr = JSON.stringify(loadHistory(), null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `typing-speed-history-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importHistoryInput').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(String(reader.result || '[]'));
+          if (Array.isArray(imported)) {
+            const existing = loadHistory();
+            const mergedMap = new Map();
+            [...existing, ...imported].forEach((item, idx) => {
+              if (item && typeof item.timestamp === 'number') {
+                const key = item.id || `${item.timestamp}-${idx}`;
+                mergedMap.set(key, { ...item, id: key });
+              }
+            });
+            const merged = Array.from(mergedMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+            saveHistory(merged);
+            renderProgressView();
+          }
+        } catch (err) {
+          console.error('Invalid history backup file:', err);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+      saveHistory([]);
+      renderProgressView();
+    });
+
+    document.getElementById('copyRefBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('copyRefBtn');
+      try {
+        await navigator.clipboard.writeText(activeParagraph);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Paragraph'; }, 1800);
+      } catch {
+        const temp = document.createElement('textarea');
+        temp.value = activeParagraph;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Paragraph'; }, 1800);
+      }
+    });
+
+    document.getElementById('toggleCustomBtn').addEventListener('click', () => {
+      customTextPanelEl.classList.toggle('hidden');
+      if (!customTextPanelEl.classList.contains('hidden')) {
+        customTextInputEl.value = activeParagraph;
+        customTextInputEl.focus();
+      }
+    });
+
+    document.getElementById('cancelCustomBtn').addEventListener('click', () => {
+      customTextPanelEl.classList.add('hidden');
+    });
+
+    document.getElementById('applyCustomBtn').addEventListener('click', () => {
+      const val = customTextInputEl.value.trim();
+      if (val) {
+        passageRequest?.abort();
+        passageStatusEl.textContent = 'Practicing your custom text. Pick a difficulty to switch back to an online passage.';
+        setParagraph(val);
+      }
+      customTextPanelEl.classList.add('hidden');
+      typingBoxEl.focus();
+    });
+
+    document.getElementById('resetDefaultBtn').addEventListener('click', () => {
+      passageQueryEl.value = '';
+      loadOnlinePassage();
+    });
+
+    difficultyButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        selectedLevel = button.dataset.passageLevel;
+        loadOnlinePassage();
+      });
+    });
+    const passageSearchForm = document.getElementById('passageSearchForm');
+    const togglePassageSearchBtn = document.getElementById('togglePassageSearchBtn');
+
+    const passageLibraryEl = document.getElementById('passageLibrary');
+
+    function setPassageSearchOpen(open) {
+      passageLibraryEl.hidden = !open;
+      togglePassageSearchBtn.setAttribute('aria-expanded', open);
+      togglePassageSearchBtn.textContent = open ? 'Hide Search' : 'Search';
+      if (open) passageQueryEl.focus();
+    }
+
+    togglePassageSearchBtn.addEventListener('click', () => setPassageSearchOpen(passageLibraryEl.hidden));
+    passageLibraryEl.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        setPassageSearchOpen(false);
+        togglePassageSearchBtn.focus();
+      }
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (passageLibraryEl.hidden) return;
+      if (passageLibraryEl.contains(event.target) || togglePassageSearchBtn.contains(event.target)) return;
+      setPassageSearchOpen(false);
+    });
+    passageSearchForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      setPassageSearchOpen(false);
+      loadOnlinePassage();
+    });
+    document.getElementById('newPassageBtn').addEventListener('click', () => {
+      setPassageSearchOpen(false);
+      loadOnlinePassage();
+    });
+
+    document.getElementById('endSessionBtn').addEventListener('click', openResultsModal);
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+      resultsModalEl.classList.add('hidden');
+    });
+    document.getElementById('restartSessionBtn').addEventListener('click', () => {
+      resultsModalEl.classList.add('hidden');
+      resetSessionState();
+      typingBoxEl.focus();
+    });
+
+    // Initialize paragraph on load: continue with the last passage you practiced.
+    // Only a first-ever visit starts with the built-in paragraph and a fresh online passage.
+    const lastPassage = loadLastPassage();
+    if (lastPassage) {
+      if (LEVEL_NAMES_OK(lastPassage.level)) selectedLevel = lastPassage.level;
+      difficultyButtons.forEach(button => {
+        const selected = button.dataset.passageLevel === selectedLevel;
+        button.setAttribute('aria-pressed', selected);
+        if (selected) document.getElementById('passageDifficultyHint').textContent = button.title;
+      });
+      setParagraph(lastPassage.text, lastPassage.online, false);
+      passageStatusEl.textContent = 'Continuing with your last passage. Choose New Passage for another one.';
+    } else {
+      setParagraph(DEFAULT_PARAGRAPH, null, false);
+      loadOnlinePassage({ initial: true });
+    }
+  </script>
+</body>
+</html>
